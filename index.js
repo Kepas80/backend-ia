@@ -4,14 +4,20 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
+const PORT = process.env.PORT || 3001;
+
 app.use(cors());
 app.use(express.json());
+
+app.get('/', (req, res) => {
+  res.send('🟢 Backend Unsplash funcionando');
+});
 
 app.post('/api/buscar-unsplash', async (req, res) => {
   const { prompt } = req.body;
 
   if (!prompt) {
-    return res.status(400).json({ error: true, message: 'Falta el prompt.' });
+    return res.status(400).json({ error: true, message: 'Prompt vacío' });
   }
 
   try {
@@ -21,15 +27,15 @@ app.post('/api/buscar-unsplash', async (req, res) => {
     const response = await axios.get(url);
     const result = response.data.results;
 
-    if (result.length === 0) {
-      return res.status(404).json({ error: true, message: 'No se encontraron imágenes para ese término.' });
+    if (!result.length) {
+      return res.status(404).json({ error: true, message: 'No se encontraron imágenes.' });
     }
 
-    const image = result[0].urls.regular;
-    res.json({ imageUrl: image });
+    const imageUrl = result[0].urls?.regular || result[0].urls?.full;
+    res.json({ imageUrl });
 
   } catch (error) {
-    console.error('Error en la API de Unsplash:', error.response?.data || error.message);
+    console.error('❌ Error searching Unsplash:', error.response?.data || error.message);
     res.status(500).json({
       error: true,
       message: error.response?.data?.errors?.[0] || 'Error al buscar en Unsplash'
@@ -37,7 +43,6 @@ app.post('/api/buscar-unsplash', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor Unsplash activo en http://localhost:${PORT}`);
+  console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
 });
