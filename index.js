@@ -7,41 +7,37 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.post('/api/generar-imagen', async (req, res) => {
+app.post('/api/buscar-unsplash', async (req, res) => {
   const { prompt } = req.body;
 
-  if (!prompt) return res.status(400).json({ error: 'Prompt vacío.' });
+  if (!prompt) {
+    return res.status(400).json({ error: true, message: 'Falta el prompt.' });
+  }
 
   try {
-    const response = await axios.post(
-      'https://api.openai.com/v1/images/generations',
-      {
-        model: 'dall-e-3',
-        prompt,
-        n: 1,
-        size: '1024x1024',
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    const ACCESS_KEY = process.env.UNSPLASH_API_KEY;
+    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(prompt)}&per_page=1&client_id=${ACCESS_KEY}`;
 
-    const imageUrl = response.data.data[0].url;
-    res.json({ imageUrl });
+    const response = await axios.get(url);
+    const result = response.data.results;
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: true, message: 'No se encontraron imágenes para ese término.' });
+    }
+
+    const image = result[0].urls.regular;
+    res.json({ imageUrl: image });
 
   } catch (error) {
-    console.error("❌ Error al generar imagen:", error.response?.data || error.message);
+    console.error('Error en la API de Unsplash:', error.response?.data || error.message);
     res.status(500).json({
       error: true,
-      message: error.response?.data?.error?.message || 'Error desconocido'
+      message: error.response?.data?.errors?.[0] || 'Error al buscar en Unsplash'
     });
   }
 });
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`🚀 Servidor Unsplash activo en http://localhost:${PORT}`);
 });
